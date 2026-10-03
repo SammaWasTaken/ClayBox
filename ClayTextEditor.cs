@@ -7,7 +7,7 @@ namespace ClayBox
     {
         public IFontProvider FontProvider { get; set; } = fontProvider;
         public IThemeProvider ThemeProvider { get; set; } = themeProvider;
-        public ILanguageServerProvider LangaugeProvider { get; set; } = new BasicLanguageProvider();
+        public ILanguageServerProvider LanguageProvider { get; set; } = new BasicLanguageProvider();
 
         public uint Width { get; private set; } = w;
         public uint Height { get; private set; } = h;
@@ -17,6 +17,9 @@ namespace ClayBox
         public bool CursorVisible { get; set; } = true;
 
         public uint Cursor { get; set; }
+        public int CursorSelectionOffset { get; set; }
+
+        public string SelectedText => _buffer.Substring((int)Cursor + CursorSelectionOffset, Math.Abs(CursorSelectionOffset));
 
         string _buffer = "";
         public string Text => _buffer;
@@ -24,6 +27,8 @@ namespace ClayBox
         ClayImage _image = new(new uint[w * h], w, h);
 
         Dictionary<uint,CodeBlock> _languageHilight = new();
+
+        Dictionary<(ConsoleKey key, ConsoleModifiers mods), Action<ConsoleKeyInfo>> _keyHandlers = new();
 
         List<(int start, int count)> _lines = new();
         uint _offsetLine = 0;
@@ -53,7 +58,7 @@ namespace ClayBox
             }
             _lines.Add((start, _buffer.Length - start));
 
-            LangaugeProvider.ParseText(_buffer).ContinueWith(t => _languageHilight = t.Result);
+            LanguageProvider.ParseText(_buffer).ContinueWith(t => _languageHilight = t.Result);
         }
 
         public void AppendAtCursor(string text)
@@ -64,7 +69,7 @@ namespace ClayBox
 
         int LineOfCursor() => Math.Max(0, _lines.FindLastIndex(l => l.start <= Cursor));
 
-        void MoveVertical(int delta)
+        void MoveVertical(int delta, bool shift)
         {
             if (_lines.Count == 0) return;
 
@@ -76,9 +81,35 @@ namespace ClayBox
 
             if (target < 0 || target >= _lines.Count) return;
 
+            var pcursor = Cursor;
+
             var t = _lines[target];
             Cursor = (uint)(t.start + Math.Min(_desiredColumn, t.count));
+
+            if (shift) CursorSelectionOffset += (int)pcursor - (int)Cursor;
+            else CursorSelectionOffset = 0;
         }
+
+        void SelectionDelete()
+        {
+            int selStart = (int)Cursor + CursorSelectionOffset;
+            int selEnd = (int)Cursor;
+
+            if (selStart > selEnd)
+            {
+                var temp = selStart;
+                selStart = selEnd;
+                selEnd = temp;
+            }
+
+            SetText(_buffer.Remove(selStart, selEnd - selStart));
+            Cursor = (uint)selStart;
+
+            CursorSelectionOffset = 0;
+        }
+
+        public void RegisterKeyHandler(ConsoleKeyInfo key, Action<ConsoleKeyInfo> handler) =>
+            _keyHandlers.Add((key.Key,key.Modifiers), handler);
 
         public void HandleKey(ConsoleKeyInfo key)
         {
@@ -88,27 +119,43 @@ namespace ClayBox
             switch (key.Key)
             {
                 case ConsoleKey.Backspace:
-                    if (Cursor > 0)
+                    if (CursorSelectionOffset != 0) SelectionDelete();
+                    else if (Cursor > 0)
                     {
                         SetText(_buffer.Remove((int)Cursor - 1, 1));
                         Cursor--;
                     }
                     break;
                 case ConsoleKey.Delete:
-                    if (Cursor < _buffer.Length)
+                    if (CursorSelectionOffset != 0) SelectionDelete();
+                    else if (Cursor < _buffer.Length)
                         SetText(_buffer.Remove((int)Cursor, 1));
                     break;
                 case ConsoleKey.LeftArrow:
-                    if (Cursor > 0) Cursor--;
+                    if (Cursor > 0)
+                    {
+                        if (key.Modifiers.HasFlag(ConsoleModifiers.Shift))
+                            CursorSelectionOffset++;
+                        else CursorSelectionOffset = 0;
+
+                        Cursor--;
+                    }
                     break;
                 case ConsoleKey.RightArrow:
-                    if (Cursor < _buffer.Length) Cursor++;
+                    if (Cursor < _buffer.Length)
+                    {
+                        if (key.Modifiers.HasFlag(ConsoleModifiers.Shift))
+                            CursorSelectionOffset--;
+                        else CursorSelectionOffset = 0;
+
+                        Cursor++;
+                    }
                     break;
                 case ConsoleKey.UpArrow:
-                    MoveVertical(-1);
+                    MoveVertical(-1, key.Modifiers.HasFlag(ConsoleModifiers.Shift));
                     break;
                 case ConsoleKey.DownArrow:
-                    MoveVertical(1);
+                    MoveVertical(1, key.Modifiers.HasFlag(ConsoleModifiers.Shift));
                     break;
                 case ConsoleKey.PageUp:
                     if (_offsetLine > 0) _offsetLine--;
@@ -117,11 +164,19 @@ namespace ClayBox
                     if (_offsetLine < _lines.Count - 1) _offsetLine++;
                     break;
                 case ConsoleKey.Enter:
+                    if (CursorSelectionOffset != 0) SelectionDelete();
                     AppendAtCursor("\n");
                     break;
                 default:
-                    if (!key.Modifiers.HasFlag(ConsoleModifiers.Control)) 
-                        AppendAtCursor(key.KeyChar.ToString());
+                    if (_keyHandlers.TryGetValue((key.Key,key.Modifiers),out var handle))
+                    {
+                        handle(key);
+                        break;
+                    }
+
+                    if (CursorSelectionOffset != 0) SelectionDelete();
+                    AppendAtCursor(key.KeyChar.ToString());
+
                     break;
             }
         }
@@ -132,6 +187,16 @@ namespace ClayBox
 
             uint fontHeight = FontProvider.ProvideFontHeight();
             uint xBaseOffset = 0;
+
+            var selStart = (int)Cursor + CursorSelectionOffset;
+            var selEnd = (int)Cursor;
+
+            if (selStart > selEnd)
+            {
+                var temp = selStart;
+                selStart = selEnd;
+                selEnd = temp;
+            }
 
             if (LineNumbers)
             {
@@ -199,6 +264,13 @@ namespace ClayBox
                     if (_languageHilight.TryGetValue((uint)j, out var cb)) block = cb;
                     if (xOffset >= Width) break;
 
+                    if (CursorSelectionOffset != 0 && j >= selStart && j < selEnd)
+                        _image.FillRectangle(
+                            xOffset, yOffset,
+                            GlyphOffsetCache[character], fontHeight,
+                            ThemeProvider.ProvideSelectionColor()
+                        );
+
                     _image.DrawBitMask(
                         GlyphCache[character],
                         xOffset, yOffset,
@@ -208,12 +280,12 @@ namespace ClayBox
                     if (block.Error) _image.DrawSquiggle(
                             yOffset + fontHeight - 1,
                             xOffset, GlyphOffsetCache[character],
-                            ThemeProvider.ErrorColor()
+                            ThemeProvider.ProvideErrorColor()
                         );
                     else if (block.Warning) _image.DrawSquiggle(
                         yOffset + fontHeight - 1,
                         xOffset, GlyphOffsetCache[character],
-                        ThemeProvider.WarningColor()
+                        ThemeProvider.ProvideWarningColor()
                     );
 
                     if (CursorVisible && Cursor == j) DrawCursor(xOffset);

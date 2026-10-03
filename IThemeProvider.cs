@@ -16,8 +16,9 @@ namespace ClayBox
         public uint ProvideNumberLineColor();
         public uint ProvideCursorLineThickness();
         public uint ProvideCursorLineColor();
-        public uint ErrorColor();
-        public uint WarningColor();
+        public uint ProvideErrorColor();
+        public uint ProvideWarningColor();
+        public uint ProvideSelectionColor();
     }
 
     public enum TextType
