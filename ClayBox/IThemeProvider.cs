@@ -12,13 +12,31 @@ namespace ClayBox
 
         public uint ProvideTextColor(TextType type);
 
-        public uint ProvideNumberLineThickness();
-        public uint ProvideNumberLineColor();
         public uint ProvideCursorLineThickness();
         public uint ProvideCursorLineColor();
         public uint ProvideErrorColor();
         public uint ProvideWarningColor();
         public uint ProvideSelectionColor();
+
+        public (uint, uint) ProvideBaseMargin();
+    }
+
+    public interface ILineNumberThemeProvider
+    {
+        public void ProvideBackground(ClayImage canvas);
+
+        public uint ProvideNumberLineThickness();
+        public uint ProvideNumberLineColor();
+        public Alignment ProvideNumberAlignment();
+        public Alignment ProvideNumberLineAlignment();
+
+        public (uint, uint) ProvideBaseMargin();
+    }
+
+    public enum Alignment
+    {
+        Left,
+        Right,
     }
 
     public enum TextType

@@ -13,11 +13,13 @@ namespace ClayBox
         public uint Height { get; private set; } = h;
         public uint TabulationSpaces { get; private set; } = 4;
 
-        public bool LineNumbers { get; set; } = true;
         public bool CursorVisible { get; set; } = true;
 
         public uint Cursor { get; set; }
         public int CursorSelectionOffset { get; set; }
+
+        public uint ViewScroll => _offsetLine;
+        public uint LineCount => (uint)_lines.Count;
 
         public string SelectedText => _buffer.Substring((int)Cursor + CursorSelectionOffset, Math.Abs(CursorSelectionOffset));
 
@@ -29,6 +31,8 @@ namespace ClayBox
         Dictionary<uint,CodeBlock> _languageHilight = new();
 
         Dictionary<(ConsoleKey key, ConsoleModifiers mods), Action<ConsoleKeyInfo>> _keyHandlers = new();
+
+        List<IClayWidget> _widgets = new();
 
         List<(int start, int count)> _lines = new();
         uint _offsetLine = 0;
@@ -59,6 +63,8 @@ namespace ClayBox
             _lines.Add((start, _buffer.Length - start));
 
             LanguageProvider.ParseText(_buffer).ContinueWith(t => _languageHilight = t.Result);
+
+            CallWidgetEvents(ClayEventType.TextChanged);
         }
 
         public void AppendAtCursor(string text)
@@ -159,9 +165,11 @@ namespace ClayBox
                     break;
                 case ConsoleKey.PageUp:
                     if (_offsetLine > 0) _offsetLine--;
+                    CallWidgetEvents(ClayEventType.ScrollChanged);
                     break;
                 case ConsoleKey.PageDown:
                     if (_offsetLine < _lines.Count - 1) _offsetLine++;
+                    CallWidgetEvents(ClayEventType.ScrollChanged);
                     break;
                 case ConsoleKey.Enter:
                     if (CursorSelectionOffset != 0) SelectionDelete();
@@ -185,12 +193,23 @@ namespace ClayBox
             }
         }
 
+        public void AddWidget(IClayWidget widget)
+        {
+            _widgets.Add(widget);
+            widget.OnEvent(this, ClayEventType.WidgetAdded);
+        }
+
+        void CallWidgetEvents(ClayEventType eventType)
+        {
+            foreach (var widget in _widgets)
+                widget.OnEvent(this, eventType);
+        }
+
         public void Render()
         {
             ThemeProvider.ProvideBackground(_image);
 
             uint fontHeight = FontProvider.ProvideFontHeight();
-            uint xBaseOffset = 0;
 
             var selStart = (int)Cursor + CursorSelectionOffset;
             var selEnd = (int)Cursor;
@@ -202,50 +221,13 @@ namespace ClayBox
                 selEnd = temp;
             }
 
-            if (LineNumbers)
-            {
-                var lw = ThemeProvider.ProvideNumberLineThickness();
-
-                string maxLine = (_lines.Count - 1).ToString();
-                uint lineAlloc = 20;
-
-                foreach (var item in maxLine)
-                {
-                    CacheGlyph(item);
-                    lineAlloc += GlyphOffsetCache[item];
-                }
-
-                _image.FillRectangle(
-                    lineAlloc, 0, lw, Height,
-                    ThemeProvider.ProvideNumberLineColor()
-                );
-
-                xBaseOffset = lineAlloc + lw + 10;
-            }
-
             CodeBlock block = new();
 
-            uint yOffset = 0;
+            var (xBaseOffset, yOffset) = ThemeProvider.ProvideBaseMargin();
+
             for (int i = (int)_offsetLine; i < _lines.Count; i++)
             {
                 if (yOffset >= Height) break;
-
-                if (LineNumbers)
-                {
-                    uint xLineOffset = 10;
-                    foreach (var item in i.ToString())
-                    {
-                        CacheGlyph(item);
-
-                        GlyphCache[item].Draw(
-                            _image,
-                            xLineOffset, yOffset,
-                            ThemeProvider.ProvideTextColor(TextType.LineNumber)
-                        );
-
-                        xLineOffset += GlyphOffsetCache[item];
-                    }
-                }
 
                 var line = _lines[i];
                 uint xOffset = xBaseOffset;
@@ -318,6 +300,8 @@ namespace ClayBox
             Width = w;
             Height = h;
             _image.Resize(w,h);
+
+            CallWidgetEvents(ClayEventType.Resized);
         }
 
         public void InvalidateCahes()

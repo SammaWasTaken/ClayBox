@@ -38,8 +38,12 @@ namespace ClayBox
 
         public void DrawSquiggle(uint y, uint x1, uint x2, uint color)
         {
+            if (y >= Height) return;
+
             for (int i = (int)x1; i < x1 + x2; i++)
             {
+                if (i >= Width) break;
+
                 double dat = y + Math.Sin(i);
 
                 Data[(int)((int)dat * Width + i)] = color;
