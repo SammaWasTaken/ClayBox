@@ -23,7 +23,7 @@ namespace ClayBox
 
     public enum TextType
     {
-        Standard,
+        Plain,
         Keyword,
         String,
         Number,
@@ -49,5 +49,6 @@ namespace ClayBox
         Label,
         Macro,
         LineNumber,
+        Identifier,
     }
 }

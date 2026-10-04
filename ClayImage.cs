@@ -6,38 +6,12 @@ using System.Threading.Tasks;
 
 namespace ClayBox
 {
-    public class ClayImage(uint[] data, uint w, uint h)
+    public class ClayImage(uint[] data, uint w, uint h) : ITintableImage
     {
         public uint Width { get; private set; } = w;
         public uint Height { get; private set; } = h;
 
         public uint[] Data { get; set; } = data;
-
-        public void DrawBitMask(ClayBitMask mask, uint x, uint y, uint color)
-        {
-            for (int my = 0; my < mask.Height; my++)
-            {
-                long py = y + my;
-                if (py >= Height) break;
-
-                for (int mx = 0; mx < mask.Width; mx++)
-                {
-                    long px = x + mx;
-                    if (px >= Width) break;
-
-                    Channel p = mask.GetPixel(mx, my);
-                    if (p == Channel.None) continue;
-
-                    uint m = ((p & Channel.A) != 0 ? 0xFF000000u : 0)
-                           | ((p & Channel.R) != 0 ? 0x00FF0000u : 0)
-                           | ((p & Channel.G) != 0 ? 0x0000FF00u : 0)
-                           | ((p & Channel.B) != 0 ? 0x000000FFu : 0);
-
-                    ref uint dst = ref Data[py * Width + px];
-                    dst = (dst & ~m) | (color & m);
-                }
-            }
-        }
 
         public void DrawVertialLine(uint x, uint y1, uint y2, uint color)
         {
@@ -100,6 +74,70 @@ namespace ClayBox
             Width = w;
             Height = h;
             Data = new uint[w * h];
+        }
+
+        static uint ColorScale(uint a, uint b) => (a * b + 127) / 255;
+
+        static uint ColorMix(uint bg, uint fg, uint cov) => (bg * (255 - cov) + fg * cov + 127) / 255;
+
+        public void Draw(ClayImage canvas, uint x, uint y, uint color)
+        {
+            if (x >= canvas.Width || y >= canvas.Height) return;
+
+            uint drawW = Math.Min(Width, canvas.Width - x);
+            uint drawH = Math.Min(Height, canvas.Height - y);
+
+            uint tintA = color >> 24;
+            if (tintA == 0) return;
+
+            uint fr = (color >> 16) & 0xFF;
+            uint fg = (color >> 8) & 0xFF;
+            uint fb = color & 0xFF;
+
+            for (uint sy = 0; sy < drawH; sy++)
+            {
+                int srcRow = (int)(sy * Width);
+                int dstRow = (int)((y + sy) * canvas.Width + x);
+
+                for (uint sx = 0; sx < drawW; sx++)
+                {
+                    uint src = Data[srcRow + sx];
+                    if (src == 0) continue;
+
+                    uint cr = ColorScale((src >> 16) & 0xFF, tintA);
+                    uint cg = ColorScale((src >> 8) & 0xFF, tintA);
+                    uint cb = ColorScale(src & 0xFF, tintA);
+                    uint ca = ColorScale(src >> 24, tintA);
+
+                    if ((cr | cg | cb | ca) == 0) continue;
+
+                    int di = dstRow + (int)sx;
+                    uint dst = canvas.Data[di];
+                    uint da = dst >> 24;
+
+                    if (da == 255)
+                    {
+                        uint r = ColorMix((dst >> 16) & 0xFF, fr, cr);
+                        uint g = ColorMix((dst >> 8) & 0xFF, fg, cg);
+                        uint b = ColorMix(dst & 0xFF, fb, cb);
+                        canvas.Data[di] = 0xFF000000 | (r << 16) | (g << 8) | b;
+                    }
+                    else
+                    {
+                        uint outA = ca + ColorScale(da, 255 - ca);
+                        if (outA == 0) continue;
+
+                        uint r = (fr * ca + ColorScale((dst >> 16) & 0xFF, 255 - ca) * da / 255) / outA;
+                        uint g = (fg * ca + ColorScale((dst >> 8) & 0xFF, 255 - ca) * da / 255) / outA;
+                        uint b = (fb * ca + ColorScale(dst & 0xFF, 255 - ca) * da / 255) / outA;
+
+                        canvas.Data[di] = (outA << 24)
+                                 | (Math.Min(r, 255u) << 16)
+                                 | (Math.Min(g, 255u) << 8)
+                                 | Math.Min(b, 255u);
+                    }
+                }
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ namespace ClayBox
 {
     public interface IFontProvider
     {
-        public ClayBitMask ProvideGlyph(char c);
+        public ITintableImage ProvideGlyph(char c);
         public uint ProvideGlyphOffset(char c);
 
         public uint ProvideFontHeight();

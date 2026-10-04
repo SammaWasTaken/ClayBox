@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace ClayBox
 {
-    public sealed class ClayBitMask
+    public sealed class ClayBitMask : ITintableImage
     {
         private readonly byte[] _data;
 
@@ -70,6 +71,32 @@ namespace ClayBox
             if ((uint)x >= (uint)Width) throw new ArgumentOutOfRangeException(nameof(x));
             if ((uint)y >= (uint)Height) throw new ArgumentOutOfRangeException(nameof(y));
             return y * Width + x;
+        }
+
+        public void Draw(ClayImage canvas, uint x, uint y, uint color)
+        {
+            for (int my = 0; my < Height; my++)
+            {
+                long py = y + my;
+                if (py >= canvas.Height) break;
+
+                for (int mx = 0; mx < Width; mx++)
+                {
+                    long px = x + mx;
+                    if (px >= canvas.Width) break;
+
+                    Channel p = GetPixel(mx, my);
+                    if (p == Channel.None) continue;
+
+                    uint m = ((p & Channel.A) != 0 ? 0xFF000000u : 0)
+                           | ((p & Channel.R) != 0 ? 0x00FF0000u : 0)
+                           | ((p & Channel.G) != 0 ? 0x0000FF00u : 0)
+                           | ((p & Channel.B) != 0 ? 0x000000FFu : 0);
+
+                    ref uint dst = ref canvas.Data[py * canvas.Width + px];
+                    dst = (dst & ~m) | (color & m);
+                }
+            }
         }
     }
 

@@ -35,7 +35,7 @@ namespace ClayBox
 
         int _desiredColumn = -1;
 
-        Dictionary<char, ClayBitMask> GlyphCache = new();
+        Dictionary<char, ITintableImage> GlyphCache = new();
         Dictionary<char, uint> GlyphOffsetCache = new();
 
         public ClayImage GetImage() => _image;
@@ -167,6 +167,10 @@ namespace ClayBox
                     if (CursorSelectionOffset != 0) SelectionDelete();
                     AppendAtCursor("\n");
                     break;
+                case ConsoleKey.Tab:
+                    if (CursorSelectionOffset != 0) SelectionDelete();
+                    AppendAtCursor(new string(' ', (int)TabulationSpaces));
+                    break;
                 default:
                     if (_keyHandlers.TryGetValue((key.Key,key.Modifiers),out var handle))
                     {
@@ -233,8 +237,8 @@ namespace ClayBox
                     {
                         CacheGlyph(item);
 
-                        _image.DrawBitMask(
-                            GlyphCache[item],
+                        GlyphCache[item].Draw(
+                            _image,
                             xLineOffset, yOffset,
                             ThemeProvider.ProvideTextColor(TextType.LineNumber)
                         );
@@ -271,8 +275,8 @@ namespace ClayBox
                             ThemeProvider.ProvideSelectionColor()
                         );
 
-                    _image.DrawBitMask(
-                        GlyphCache[character],
+                    GlyphCache[character].Draw(
+                        _image,
                         xOffset, yOffset,
                         ThemeProvider.ProvideTextColor(block.Type)
                     );
