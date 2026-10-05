@@ -13,34 +13,41 @@ namespace ClayBox
 
         public uint[] Data { get; set; } = data;
 
-        public void DrawVertialLine(uint x, uint y1, uint y2, uint color)
+        public void DrawVertialLine(int x, int y1, int y2, uint color)
         {
             if (x >= Width) return;
 
             if (y1 > y2) (y1, y2) = (y2, y1);
-            if (y2 >= Height) y2 = Height - 1;
+            if ((y1 < 0 && y2 < 0) || x < 0) return;
 
-            for (uint y = y1; y <= y2; y++)
+            if (y2 >= Height) y2 = (int)Height - 1;
+            if (y1 < 0) y1 = 0;
+
+            for (int y = y1; y <= y2; y++)
             {
                 Data[y * Width + x] = color;
             }
         }
 
-        public void DrawHorizontalLine(uint y, uint x1, uint x2, uint color)
+        public void DrawHorizontalLine(int y, int x1, int x2, uint color)
         {
             if (y >= Height) return;
 
             if (x1 > x2) (x1, x2) = (x2, x1);
-            if (x2 >= Width) x2 = Width - 1;
+            if ((x1 < 0 && x2 < 0) || y < 0) return;
+
+            if (x2 >= Width) x2 = (int)Width - 1;
+            if (x1 < 0) x1 = 0;
 
             Array.Fill(Data, color, (int)(y * Width + x1), (int)(x2 - x1));
         }
 
-        public void DrawSquiggle(uint y, uint x1, uint x2, uint color)
+        public void DrawSquiggle(int x, int y, int width, uint color)
         {
             if (y >= Height) return;
+            if (x + width < 0 || y < 0) return;
 
-            for (int i = (int)x1; i < x1 + x2; i++)
+            for (int i = Math.Max(x,0); i < x + width; i++)
             {
                 if (i >= Width) break;
 
@@ -50,26 +57,30 @@ namespace ClayBox
             }
         }
 
-        public void FillRectangle(uint x, uint y, uint w, uint h, uint color)
+        public void FillRectangle(int x, int y, uint w, uint h, uint color)
         {
             if (x >= Width || y >= Height) return;
+            if (x + w < 0 || y + h < 0) return;
 
             if (h == 1)
             {
-                DrawHorizontalLine(y, x, x + w, color);
+                DrawHorizontalLine(y, x, x + (int)w, color);
                 return;
             }
             else if (w == 1)
             {
-                DrawVertialLine(x, y, y + h, color);
+                DrawVertialLine(x, y, y + (int)h, color);
                 return;
             }
 
-            if (x + w > Width) w = Width - x;
-            if (y + h > Height) h = Height - y;
+            if (x + w > Width) w = (uint)(Width - x);
+            if (y + h > Height) h = (uint)(Height - y);
 
-            for (uint dy = 0; dy < h; dy++)
-                Array.Fill(Data, color, (int)((y + dy) * Width + x), (int)w);
+            var clampX = Math.Max(x, 0);
+            var clampY = Math.Max(y, 0);
+
+            for (int dy = 0; dy < h; dy++)
+                Array.Fill(Data, color, (int)((clampY + dy) * Width + clampX), (int)w);
         }
 
         public void Resize(uint w, uint h)
@@ -84,12 +95,16 @@ namespace ClayBox
 
         static uint ColorMix(uint bg, uint fg, uint cov) => (bg * (255 - cov) + fg * cov + 127) / 255;
 
-        public void Draw(ClayImage canvas, uint x, uint y, uint color)
+        public void Draw(ClayImage canvas, int x, int y, uint color)
         {
+            if (x + Width < 0 || y + Height < 0) return;
             if (x >= canvas.Width || y >= canvas.Height) return;
 
-            uint drawW = Math.Min(Width, canvas.Width - x);
-            uint drawH = Math.Min(Height, canvas.Height - y);
+            int drawW = Math.Min((int)Width, (int)canvas.Width - x);
+            int drawH = Math.Min((int)Height, (int)canvas.Height - y);
+
+            uint drawOffX = (uint)(-Math.Min(x, 0));
+            uint drawOffY = (uint)(-Math.Min(y, 0));
 
             uint tintA = color >> 24;
             if (tintA == 0) return;
@@ -98,12 +113,12 @@ namespace ClayBox
             uint fg = (color >> 8) & 0xFF;
             uint fb = color & 0xFF;
 
-            for (uint sy = 0; sy < drawH; sy++)
+            for (uint sy = drawOffY; sy < drawH; sy++)
             {
                 int srcRow = (int)(sy * Width);
                 int dstRow = (int)((y + sy) * canvas.Width + x);
 
-                for (uint sx = 0; sx < drawW; sx++)
+                for (uint sx = drawOffX; sx < drawW; sx++)
                 {
                     uint src = Data[srcRow + sx];
                     if (src == 0) continue;

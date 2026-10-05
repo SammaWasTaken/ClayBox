@@ -8,6 +8,6 @@ namespace ClayBox
 {
     public interface ITintableImage
     {
-        public void Draw(ClayImage canvas, uint x, uint y, uint color);
+        public void Draw(ClayImage canvas, int x, int y, uint color);
     }
 }

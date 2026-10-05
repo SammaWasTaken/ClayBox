@@ -16,7 +16,8 @@ namespace ClayBox
     public enum ClayEventType
     {
         TextChanged,
-        ScrollChanged,
+        HorizontalScrollChanged,
+        VerticalScrollChanged,
         WidgetAdded,
         Resized
     }

@@ -56,7 +56,7 @@ namespace ClayBox
 
             textbox.ThemeProvider.ProvideBackground(_image);
 
-            for (int i = (int)textbox.ViewScroll; i < textbox.LineCount; i++)
+            for (int i = (int)textbox.ViewScrollY; i < textbox.LineCount; i++)
             {
                 uint xLineOffset = alignment == Alignment.Right ? width - lineoffRight - xOffset * 2 : xOffset + lineoffLeft;
 
@@ -71,7 +71,7 @@ namespace ClayBox
 
                     GlyphCache[item].Draw(
                         _image,
-                        xLineOffset, yOffset,
+                        (int)xLineOffset, (int)yOffset,
                         textbox.ThemeProvider.ProvideTextColor(TextType.LineNumber)
                     );
 
@@ -82,7 +82,7 @@ namespace ClayBox
             }
 
             _image.FillRectangle(
-                lineAlignment == Alignment.Right ? lineAlloc : 0, 0, lw, Height,
+                lineAlignment == Alignment.Right ? (int)lineAlloc : 0, 0, lw, Height,
                 ThemeProvider.ProvideNumberLineColor()
             );
         }

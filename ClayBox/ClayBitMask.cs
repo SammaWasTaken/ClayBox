@@ -73,8 +73,11 @@ namespace ClayBox
             return y * Width + x;
         }
 
-        public void Draw(ClayImage canvas, uint x, uint y, uint color)
+        public void Draw(ClayImage canvas, int x, int y, uint color)
         {
+            if (x + Width < 0 || y + Height < 0) return;
+            if (x > canvas.Width || y > canvas.Height) return;
+
             for (int my = 0; my < Height; my++)
             {
                 long py = y + my;
