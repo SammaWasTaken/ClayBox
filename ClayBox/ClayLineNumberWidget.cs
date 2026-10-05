@@ -54,7 +54,7 @@ namespace ClayBox
                 _image.Resize(Width, Height);
             }
 
-            textbox.ThemeProvider.ProvideBackground(_image);
+            ThemeProvider.ProvideBackground(_image);
 
             for (int i = (int)textbox.ViewScrollY; i < textbox.LineCount; i++)
             {
@@ -72,7 +72,7 @@ namespace ClayBox
                     GlyphCache[item].Draw(
                         _image,
                         (int)xLineOffset, (int)yOffset,
-                        textbox.ThemeProvider.ProvideTextColor(TextType.LineNumber)
+                        ThemeProvider.ProvideNumberColor()
                     );
 
                     xLineOffset += (uint)(alignment == Alignment.Right ? -1 : 1) * GlyphOffsetCache[item];

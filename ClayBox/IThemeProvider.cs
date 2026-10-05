@@ -27,6 +27,7 @@ namespace ClayBox
 
         public uint ProvideNumberLineThickness();
         public uint ProvideNumberLineColor();
+        public uint ProvideNumberColor();
         public Alignment ProvideNumberAlignment();
         public Alignment ProvideNumberLineAlignment();
 
@@ -39,7 +40,7 @@ namespace ClayBox
         Right,
     }
 
-    public enum TextType
+    public enum TextType : uint
     {
         Plain,
         Keyword,
@@ -66,7 +67,6 @@ namespace ClayBox
         Namespace,
         Label,
         Macro,
-        LineNumber,
         Identifier,
     }
 }

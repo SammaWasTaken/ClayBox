@@ -160,12 +160,14 @@ namespace ClayBox
                 );
 
                 RegisterKeyHandler(ConsoleKey.PageUp, ConsoleModifiers.None, k =>
-                { if (_offsetLine > 0) ViewScrollY--; },
+                {
+                    if (_offsetLine > 0) ViewScrollY--; },
                     false
                 );
 
                 RegisterKeyHandler(ConsoleKey.PageDown, ConsoleModifiers.None, k =>
-                { if (_offsetLine < _lines.Count - 1) ViewScrollY++; },
+                { 
+                    if (_offsetLine < _lines.Count - 1) ViewScrollY++; },
                     false
                 );
 
