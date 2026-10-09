@@ -129,13 +129,15 @@ namespace ClayBox
                 {
                     if (Cursor > 0)
                     {
-                        if (k.Modifiers.HasFlag(ConsoleModifiers.Shift))
-                            CursorSelectionOffset++;
-                        else CursorSelectionOffset = 0;
-
+                        var pcursor = Cursor;
+                        
                         if (k.Modifiers.HasFlag(ConsoleModifiers.Control))
                             Cursor = (uint)_buffer.SearchForStart((int)Cursor - 1);
                         else Cursor--;
+
+                        if (k.Modifiers.HasFlag(ConsoleModifiers.Shift))
+                            CursorSelectionOffset += (int)pcursor - (int)Cursor;
+                        else CursorSelectionOffset = 0;
                     }
                 }, false);
 
@@ -143,13 +145,15 @@ namespace ClayBox
                 {
                     if (Cursor < _buffer.Length)
                     {
-                        if (k.Modifiers.HasFlag(ConsoleModifiers.Shift))
-                            CursorSelectionOffset--;
-                        else CursorSelectionOffset = 0;
+                        var pcursor = Cursor;
 
                         if (k.Modifiers.HasFlag(ConsoleModifiers.Control))
                             Cursor = (uint)_buffer.SearchForEnd((int)Cursor);
                         else Cursor++;
+
+                        if (k.Modifiers.HasFlag(ConsoleModifiers.Shift))
+                            CursorSelectionOffset += (int)pcursor - (int)Cursor;
+                        else CursorSelectionOffset = 0;
                     }
                 }, false);
 
