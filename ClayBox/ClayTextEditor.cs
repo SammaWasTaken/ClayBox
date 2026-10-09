@@ -133,7 +133,9 @@ namespace ClayBox
                             CursorSelectionOffset++;
                         else CursorSelectionOffset = 0;
 
-                        Cursor--;
+                        if (k.Modifiers.HasFlag(ConsoleModifiers.Control))
+                            Cursor = (uint)_buffer.SearchForStart((int)Cursor - 1);
+                        else Cursor--;
                     }
                 }, false);
 
@@ -145,7 +147,9 @@ namespace ClayBox
                             CursorSelectionOffset--;
                         else CursorSelectionOffset = 0;
 
-                        Cursor++;
+                        if (k.Modifiers.HasFlag(ConsoleModifiers.Control))
+                            Cursor = (uint)_buffer.SearchForEnd((int)Cursor);
+                        else Cursor++;
                     }
                 }, false);
 
