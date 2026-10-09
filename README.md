@@ -5,7 +5,7 @@
     <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/SammaWasTaken/ClayBox?style=for-the-badge">
 </p>
 
-ClayBox is a simple yet powerful platform agnostic text box build to code editors.
+ClayBox is a simple yet powerful platform agnostic text box build for code editors.
 
 # Features
 
